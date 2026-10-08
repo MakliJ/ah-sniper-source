@@ -1,0 +1,114 @@
+# === SECRETS (NEVER COMMIT) ===
+.env
+.env*
+!.env.example
+public_config.json
+*credentials*.json
+*.pem
+*.key
+*.p12
+*.pfx
+.env copy
+supabase_config.json
+tunnel_token.txt
+tunnel_interface.txt
+keys_*.txt
+settings.json
+collector_settings.json
+license.json
+users.json
+.flask_secret
+
+# === DATABASES ===
+*.db
+*.db-shm
+*.db-wal
+
+# === BACKUPS ===
+*.zip
+*.7z
+*.rar
+*.bak
+_checkpoint_*/
+_backup_*/
+бэкапвеб/
+
+# === BUILD ARTIFACTS ===
+build/
+dist/
+release/
+_obf/
+_build_flags.py
+__pycache__/
+*.pyc
+*.exe
+*.exe.*
+.venv/
+venv/
+node_modules/
+
+# === RUNTIME / GENERATED ===
+debug.log
+*.log
+*.log.*
+history.json
+item_names_cache.json
+*gitleaks*.json
+*.tmp
+*.prebak
+tools/_*.json
+topxavg_cache.json
+topxavg_cache_us.json
+boe_variants_live_*.json
+item_icons.json
+item_names.json
+item_names_ru.json
+connected_realms.json
+realms.json
+user_deals.json
+user_ignored.json
+presets.json
+validation_report.json
+
+# === PERF TESTS (contain API keys) ===
+_perf_tests/
+
+# === ICONS (generated, thousands of files) ===
+icons/
+
+# === OLD DATA / ARCHIVES ===
+auction_prices/
+archive/
+cookies.txt
+_test_final.py
+
+# === LOGS ===
+sniper_debug.log
+stderr.log
+
+# === MISC ===
+browserWork.txt
+monitosWork.txt
+AuctionMonitor.exe
+AuctionMonitorAdmin.exe
+AuctionMonitorAdmin.exe.next
+AuctionMonitorAdmin.exe.pre-*.bak
+*.spec
+pyarmor.bug.log
+wow auc.rar
+wow auc.rar
+tools/icon_download_progress.json
+бэкапвеб
+
+# === IDE ===
+.vscode/
+.idea/
+.qwen/
+.qodo/
+frontend_audit_report.html
+frontend_benchmark_v2.html
+
+# Local auction audit observations are not a runtime mapping or release data.
+boe_stats_map.json
+boe_variants_catalog.json
+data_boe_*.json

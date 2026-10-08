@@ -1,0 +1,21 @@
+name: "💡 Предложение"
+description: "Предложить новую функцию или улучшение"
+title: "[IDEA] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Что предлагаете?
+      description: Опишите идею. Какую проблему она решает?
+      placeholder: "Например: добавить звук при появлении сделки с скидкой >50%..."
+    validations:
+      required: true
+
+  - type: input
+    id: contact
+    attributes:
+      label: Контакт для связи
+      placeholder: "@username"
+    validations:
+      required: false

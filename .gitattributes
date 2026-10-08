@@ -1,0 +1,3 @@
+# cmd.exe needs consistent Windows line endings in the production launcher.
+* text=auto eol=lf
+start_all.bat text eol=crlf

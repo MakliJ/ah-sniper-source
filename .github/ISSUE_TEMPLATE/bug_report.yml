@@ -1,0 +1,70 @@
+name: "🐛 Баг-репорт"
+description: "Сообщить об ошибке в AH Sniper"
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Спасибо, что помогаете сделать AH Sniper лучше! Заполните форму ниже."
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: Версия
+      description: Где вы столкнулись с багом?
+      options:
+        - Веб-версия (example.invalid)
+        - Десктоп (EXE)
+        - Лендинг
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Браузер (для веб-версии)
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - Другой
+        - Не применимо (EXE)
+    validations:
+      required: false
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Что произошло?
+      description: Опишите ошибку. Что вы делали и что пошло не так?
+      placeholder: "Например: нажал на звезду в браузере предметов, а она не добавила предмет в снайп-лист..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Что ожидалось?
+      description: Что должно было произойти?
+      placeholder: "Предмет должен был добавиться в снайп-лист..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Скриншот
+      description: Перетащите скриншот сюда (если есть)
+      placeholder: "Перетащите изображение..."
+    validations:
+      required: false
+
+  - type: input
+    id: contact
+    attributes:
+      label: Контакт для связи
+      description: Telegram или email (необязательно)
+      placeholder: "@username"
+    validations:
+      required: false

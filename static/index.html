@@ -1,0 +1,534 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0f1117"><title>AH Sniper — WoW Auction House Monitor</title>
+<script defer src="/analytics.js"></script>
+<link rel="icon" type="image/png" sizes="32x32" href="/logos/favicon-32.png">
+<script defer src="/boe.js"></script>
+<script defer src="/preset-store.js"></script>
+<script defer src="/presets.js"></script>
+<script defer src="/workspace.js"></script>
+<script defer src="/item-detail.js"></script>
+<script defer src="/market-grid.js"></script>
+<script defer src="/vendor/ag-grid-community.min.js"></script><!-- v33.2.1, self-hosted: no CDN dependency -->
+<style>
+:root{--bg:#0f1117;--bg2:#1a1d25;--bg3:#242833;--text:#e0e0e0;--text2:#9098a5;--gold:#f5c842;--green:#4ade80;--red:#f87171;--border:rgba(255,255,255,0.06)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#topbar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+#topbar .logo{font-size:17px;font-weight:700;color:var(--gold)}
+#topbar input,#topbar select,#topbar button{padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px}
+#topbar input{width:180px}#topbar button{cursor:pointer;font-weight:600}#topbar button:hover{background:#353b4a}
+.btn-gold{background:var(--gold)!important;color:#0d0d0d!important;border:none!important}.btn-stop{background:var(--red)!important;color:#fff!important;border:none!important}
+#status{font-size:11px;color:var(--text2);margin-left:auto;white-space:nowrap}
+#selBar{display:flex;align-items:center;gap:8px;padding:4px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;font-size:11px;color:var(--text2);min-height:28px;display:none}
+#selBar span{color:var(--gold);cursor:pointer}
+.tabs{display:flex;gap:0;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 14px;flex-shrink:0}
+.tab-btn{padding:8px 20px;border:none;background:none;color:var(--text2);cursor:pointer;font-size:13px;border-bottom:2px solid transparent}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-panel{display:none;flex:1;overflow:hidden}.tab-panel.active{display:flex}
+#main{display:flex;flex:1;overflow:hidden}
+#sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);padding:10px;overflow-y:auto;flex-shrink:0;font-size:12px}
+#sidebar h3{font-size:11px;color:var(--gold);text-transform:uppercase;margin:6px 0 3px}
+#sidebar label{font-size:10px;color:var(--text2);display:block;margin-top:4px}
+#sidebar input,#sidebar select{width:100%;margin:1px 0 4px;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:11px}
+.field-label{display:flex;align-items:center;gap:5px;margin-top:4px}.field-label label{margin:0!important}
+.help-btn{width:17px;height:17px;border:1px solid rgba(245,200,66,.35);border-radius:50%;background:rgba(245,200,66,.08);color:var(--gold);font-size:10px;font-weight:800;line-height:15px;cursor:pointer;transition:.15s}
+.help-btn:hover,.help-btn[aria-expanded="true"]{background:var(--gold);color:#111;transform:translateY(-1px)}
+#helpPopover{position:fixed;z-index:10020;display:none;width:min(360px,calc(100vw - 24px));padding:13px 15px;border-radius:11px;background:linear-gradient(145deg,#292d39,#1b1e27);border:1px solid rgba(245,200,66,.4);box-shadow:0 16px 45px rgba(0,0,0,.55);font-size:12px;line-height:1.55;color:var(--text)}
+#helpPopover.open{display:block;animation:popoverIn .16s ease-out}@keyframes popoverIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+#infoPanel{font-size:10px;color:var(--text2);line-height:1.6}
+#gridContainer{flex:1;overflow:hidden}
+#browserGrid{flex:1;overflow:hidden}
+#logContainer{flex:1;overflow-y:auto;padding:10px;font-family:Consolas,monospace;font-size:11px;color:#ccc;white-space:pre-wrap;background:var(--bg);user-select:text}
+.ag-theme-custom-dark{--ag-background-color:var(--bg);--ag-header-background-color:var(--bg2);--ag-odd-row-background-color:#11131a;--ag-row-hover-color:#1e2230;--ag-border-color:var(--border);--ag-font-size:12px;--ag-font-family:'Segoe UI',system-ui;--ag-row-height:30px;--ag-header-height:32px;--ag-foreground-color:#d0d0d0;--ag-secondary-foreground-color:#888;--ag-data-color:#d0d0d0;--ag-header-foreground-color:#aaa}
+.ag-theme-custom-dark .row-pinned{background:rgba(74,222,128,0.07)!important}
+.ag-theme-custom-dark .row-pinned .ag-cell{color:var(--green)!important}
+.ag-theme-custom-dark .row-rare-gold{background:rgba(245,200,66,0.1)!important}
+.ag-theme-custom-dark .row-rare-gold .ag-cell{color:var(--gold)!important}
+.ag-theme-custom-dark .row-121{background:rgba(96,180,255,0.14)!important;box-shadow:inset 3px 0 0 #5cb8ff}
+.ag-theme-custom-dark .row-121 .ag-cell{color:#aedcff!important}
+.discount-badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:700}
+.disc-high{background:rgba(74,222,128,0.15);color:var(--green)}.disc-mid{background:rgba(245,200,66,0.15);color:var(--gold)}.disc-low{color:var(--text2)}
+.cat-tree{font-size:11px;line-height:1.8;user-select:none}
+.cat-tree .cat-name{cursor:pointer;color:var(--text);padding:4px 8px;border-radius:4px;display:flex;justify-content:space-between;align-items:center;margin:2px 0;border-left:3px solid transparent;transition:all .15s}
+.cat-tree .cat-name:hover{background:var(--bg3);border-left-color:var(--text2)}.cat-tree .cat-name.active{background:var(--bg3);color:var(--gold);font-weight:600;border-left-color:var(--gold)}
+.cat-tree .cat-count{color:var(--text2);font-size:10px;margin-left:4px}
+.cat-tree .sub-list{margin-left:14px;display:none;border-left:1px solid rgba(255,255,255,0.05);padding-left:4px}.cat-tree .sub-list.open{display:block}
+.cat-tree .sub-name{font-size:10px;color:var(--text2);cursor:pointer;padding:2px 8px;border-radius:3px;display:flex;justify-content:space-between;border-left:2px solid transparent;transition:all .12s;margin:1px 0}
+.cat-tree .sub-name:hover{color:var(--text);background:var(--bg3);border-left-color:var(--text2)}.cat-tree .sub-name.active{color:var(--gold);font-weight:600;border-left-color:var(--gold);background:rgba(245,200,66,0.08);border-radius:4px}
+.cat-tree .group-name{font-size:10px;color:var(--text2);font-weight:600;padding:3px 8px;cursor:pointer;border-left:2px solid rgba(255,255,255,0.08);margin:2px 0;transition:all .12s}
+.cat-tree .group-name:hover{color:var(--text);background:var(--bg3);border-left-color:var(--gold)}
+#browserStatus{font-size:10px;color:var(--text2);padding:4px 6px;border-top:1px solid var(--border);margin-top:4px}
+#settingsPanel{max-width:500px;padding:20px;overflow-y:auto;flex:1}
+#settingsPanel h3{color:var(--gold);margin:16px 0 8px}
+#settingsPanel label{font-size:12px;color:var(--text2);display:block;margin:6px 0 2px}
+#settingsPanel input,#settingsPanel select,#settingsPanel textarea{width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;margin-bottom:6px}
+#settingsPanel button{padding:6px 16px;border-radius:4px;border:none;background:var(--gold);color:#0d0d0d;font-weight:700;cursor:pointer;font-size:12px;margin-top:4px}
+/* Sale realm picker */
+#tab-realms{overflow-y:auto;background:radial-gradient(circle at 18% 12%,rgba(245,200,66,.09),transparent 30%),radial-gradient(circle at 83% 25%,rgba(56,189,248,.07),transparent 28%),var(--bg)}
+.realms-shell{width:min(1180px,100%);margin:0 auto;padding:28px 30px 40px}
+.realms-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:22px 24px;border:1px solid rgba(245,200,66,.18);border-radius:16px;background:linear-gradient(135deg,rgba(245,200,66,.1),rgba(36,40,51,.76) 45%,rgba(30,58,95,.28));box-shadow:0 18px 45px rgba(0,0,0,.16)}
+.realms-kicker{color:var(--gold);font-size:10px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase}.realms-title{font-size:24px;font-weight:760;margin-top:5px}.realms-subtitle{font-size:12px;color:var(--text2);line-height:1.55;max-width:620px;margin-top:6px}
+.realms-counter{flex:0 0 auto;text-align:right}.realms-counter b{display:block;color:var(--gold);font-size:30px;line-height:1}.realms-counter span{color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.8px}
+.realms-tools{display:flex;align-items:center;gap:10px;margin:18px 0 12px}.realms-search{flex:1;min-width:180px;padding:10px 13px;border-radius:9px;border:1px solid var(--border);background:rgba(26,29,37,.9);color:var(--text);outline:none}.realms-search:focus{border-color:rgba(245,200,66,.5);box-shadow:0 0 0 3px rgba(245,200,66,.08)}
+.realm-clear{padding:9px 13px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer}.realm-clear:hover{color:var(--red);border-color:rgba(248,113,113,.35)}
+.realm-chips{display:flex;gap:6px;flex-wrap:wrap;min-height:31px;margin-bottom:13px}.realm-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.24);color:#f8dda0;font-size:10px}.realm-chip button{border:0;background:none;color:var(--text2);cursor:pointer;font-size:12px;line-height:1}.realm-chip button:hover{color:var(--red)}
+.realm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:10px}.realm-card{display:flex;align-items:center;gap:11px;padding:12px 13px;border-radius:11px;border:1px solid var(--border);background:linear-gradient(145deg,rgba(36,40,51,.86),rgba(25,28,36,.92));color:var(--text);font:inherit;cursor:pointer;transition:transform .14s,border-color .14s,box-shadow .14s}.realm-card:hover{transform:translateY(-2px);border-color:rgba(245,200,66,.3);box-shadow:0 10px 24px rgba(0,0,0,.18)}.realm-card.selected{border-color:rgba(245,200,66,.55);background:linear-gradient(145deg,rgba(245,200,66,.13),rgba(28,31,40,.94));box-shadow:inset 3px 0 0 var(--gold)}
+.realm-star{font-size:20px;color:#6d7380;line-height:1}.realm-card.selected .realm-star{color:var(--gold);text-shadow:0 0 12px rgba(245,200,66,.3)}.realm-name,.realm-meta{display:block}.realm-name{font-size:12px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.realm-meta{font-size:9px;color:var(--text2);margin-top:2px;letter-spacing:.3px}.realm-empty{grid-column:1/-1;text-align:center;padding:38px;color:var(--text2);border:1px dashed var(--border);border-radius:12px}
+@media(max-width:760px){#topbar{flex-wrap:wrap}.tabs{overflow-x:auto;padding:0 6px}.tab-btn{padding:8px 12px;white-space:nowrap}.realms-shell{padding:16px 12px 28px}.realms-hero{align-items:flex-start;padding:17px;flex-direction:column}.realms-counter{text-align:left}.realms-title{font-size:20px}.realms-tools{align-items:stretch;flex-direction:column}.realm-grid{grid-template-columns:1fr}#sidebar{width:190px}}
+/* Item Detail Card */
+#itemDetail{padding:20px;overflow-y:auto;flex:1;background:var(--bg)}
+#itemDetail .id-back{cursor:pointer;color:var(--text2);font-size:12px;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);transition:all .15s;margin-bottom:16px}
+#itemDetail .id-back:hover{background:var(--bg3);color:var(--text);border-color:var(--text2)}
+#itemDetail .id-body{display:flex;gap:16px;flex-wrap:wrap}
+#itemDetail .id-left{flex:0 0 auto;text-align:center}
+#itemDetail .id-left img{width:56px;height:56px;border-radius:8px;border:2px solid var(--border)}
+#itemDetail .id-right{flex:1;min-width:200px}
+#itemDetail .id-name{font-size:18px;font-weight:700;margin-bottom:2px}
+#itemDetail .id-sub{font-size:12px;color:var(--text2);margin-bottom:14px}
+#itemDetail .id-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 18px}
+#itemDetail .id-stat{padding:12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);text-align:center}
+#itemDetail .id-stat .id-stat-label{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+#itemDetail .id-stat .id-stat-val{font-size:18px;font-weight:700;margin-top:4px}
+#itemDetail .id-stat .id-stat-val.gold{color:var(--gold)}
+#itemDetail .id-stat .id-stat-val.green{color:var(--green)}
+#itemDetail .id-stat .id-stat-val .gold{color:var(--gold)}
+#itemDetail .id-stat .id-stat-val .silver{color:#b0b8c5;font-weight:400}
+#itemDetail .id-realms-title{font-size:12px;font-weight:600;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;max-width:600px;margin-left:auto;margin-right:auto}
+#itemDetail .id-realms-title span{font-weight:400;color:var(--text2);font-size:11px}
+#itemDetail .id-realms-box{border:1px solid rgba(245,200,66,0.25);border-radius:8px;background:linear-gradient(180deg,rgba(245,200,66,0.04),rgba(245,200,66,0.01));overflow:hidden;max-width:600px;margin:0 auto}
+#itemDetail .id-realm-row{display:grid;grid-template-columns:1fr auto 40px;gap:8px;padding:3px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04);align-items:center}
+#itemDetail .id-realm-row:nth-child(even){background:rgba(255,255,255,0.025)}
+#itemDetail .id-realm-row:hover{background:rgba(245,200,66,0.08)}
+#itemDetail .id-realm-row:last-child{border-bottom:none}
+#itemDetail .id-realm-name{color:var(--text);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#itemDetail .id-realm-price{color:var(--gold);font-weight:600;text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
+#itemDetail .id-realm-qty{color:var(--text2);font-size:11px;text-align:right;font-weight:500}
+#itemDetail .id-realm-price .gold{color:var(--gold);font-weight:600}
+#itemDetail .id-realm-price .silver{color:#b0b8c5;font-weight:400}
+#itemDetail .id-link{margin-top:16px;padding:6px 14px;font-size:12px;color:var(--text2);background:var(--bg2);border-radius:6px;text-decoration:none;border:1px solid var(--border);display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+#itemDetail .id-link:hover{color:var(--gold);border-color:var(--gold);background:var(--bg3)}
+/* Toast notifications */
+#toastContainer{position:fixed;top:12px;right:12px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:10px 16px;border-radius:8px;font-size:12px;font-weight:600;color:#fff;animation:toastIn .3s ease;pointer-events:auto;box-shadow:0 4px 12px rgba(0,0,0,.4);max-width:320px}
+.toast-ok{background:#166534;border:1px solid #22c55e}.toast-err{background:#7f1d1d;border:1px solid #ef4444}.toast-info{background:#1e3a5f;border:1px solid #3b82f6}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+/* Loading overlay */
+#loadingOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,17,23,.85);z-index:9998;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+#loadingOverlay.active{display:flex}
+#loadingOverlay .spinner{width:40px;height:40px;border:3px solid var(--bg3);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite}
+#loadingOverlay .load-text{color:var(--text2);font-size:13px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Progress bar in topbar */
+#progressBar{height:2px;background:var(--gold);position:absolute;bottom:0;left:0;transition:width .3s;width:0}
+#topbar{position:relative}
+#itemDetail .id-realms-box,#itemDetail .id-realms-title{max-width:100%}#itemDetail.boe-detail .id-realm-row{grid-template-columns:minmax(100px,1fr) 115px minmax(200px,1.4fr) 35px;padding:7px 12px}.id-realm-stats{font-size:11px;color:var(--text2);white-space:normal}#itemDetail .id-name a{font-size:13px;color:var(--text2)}#itemDetail select{background:var(--bg2);color:var(--text);border:1px solid var(--border);padding:5px;border-radius:4px}
+.sniper-price{border:0;background:none;color:var(--gold);font:inherit;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}#itemDetail .id-origin{padding:9px 12px;margin:12px 0;border:1px solid var(--border);border-radius:6px;color:var(--gold);font-size:12px}#itemDetail .id-realm-selected{background:rgba(245,200,66,.12);box-shadow:inset 3px 0 var(--gold)}
+</style><link rel="stylesheet" href="/workspace.css"></head><body>
+<div id="toastContainer"></div>
+<div id="helpPopover" role="dialog" aria-live="polite"></div>
+<div id="loadingOverlay"><div class="spinner"></div><div class="load-text" data-t="loading_data">Загрузка данных...</div></div>
+<div id="topbar">
+<span class="logo"><img src="/logos/logo_nav_38.png" alt="">AH <b>Sniper</b><small id="modeLabel">DESKTOP</small></span>
+<button id="langBtn" onclick="toggleLang()" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;font-weight:700">RU</button>
+<input id="searchInput" data-tph="search_ph" placeholder="🔍 Search..." oninput="debounceSearch()">
+<span id="presetSaveStatus" role="status" style="font-size:10px;color:var(--text2)"></span><select id="presetSel" onchange="applyPreset()"><option value="">Presets...</option></select>
+<button onclick="quickSavePreset()" style="padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px" data-ttitle="save_filters_title" title="Сохранить текущие фильтры в пресет" aria-label="Сохранить пресет">💾</button>
+<button onclick="switchTab('settings')" style="padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px" title="Manage presets" aria-label="Настройки пресетов">⚙</button>
+<button class="btn-gold" id="btnStart" onclick="toggleCollector()">▶ Start</button>
+<span id="status">⚪ Ready</span><div id="progressBar"></div></div>
+<div id="selBar">Selected: <span id="selIds"></span> <button onclick="copySel()" style="background:none;border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:9px;padding:1px 6px;border-radius:3px;margin-left:4px">📋 Copy</button> <span onclick="clearSel()" style="font-size:10px;color:var(--red);margin-left:4px;cursor:pointer">clear</span></div>
+<div class="tabs">
+<button class="tab-btn active" data-tab="items" data-t="tab_sniping" onclick="switchTab('items')">📊 Снайпинг</button>
+<button class="tab-btn" data-tab="browser" data-t="tab_browser" onclick="switchTab('browser')">🌐 Браузер</button>
+<button class="tab-btn" data-tab="realms" data-t="tab_realms" onclick="switchTab('realms')">⭐ Реалмы</button>
+<button class="tab-btn" data-tab="logs" data-t="tab_logs" onclick="switchTab('logs')">📋 Логи</button>
+<button class="tab-btn" data-tab="settings" data-t="tab_settings" onclick="switchTab('settings')">⚙ Настройки</button></div>
+
+<div id="tab-items" class="tab-panel active"><div id="sniperMain" class="workspace-main">
+<aside class="workspace-sidebar" id="sniperSidebar" aria-label="Фильтры снайпера">
+<div class="sidebar-title"><span data-t="filters">Фильтры</span><button class="icon-button" onclick="toggleFilters()" aria-label="Скрыть фильтры">‹</button></div>
+<section class="filter-block">
+<label class="filter-toggle"><input type="checkbox" id="itemsSnipe" checked onchange="toggleItemsSnipe()"><span>Snipe items</span><small>01</small></label>
+<fieldset id="itemsFilterFields">
+<div class="field-pair"><label><span data-t="min_discount">Скидка от, %</span><input type="number" id="minDiscount" value="0" min="0" max="100" onchange="applyFilters();autoSavePreset()" oninput="autoSavePreset()"></label><label><span data-t="min_avg">Средняя от, g</span><input type="number" id="minAvg" value="0" min="0" onchange="applyFilters();autoSavePreset()" oninput="autoSavePreset()"></label></div>
+<button type="button" class="pick-button" onclick="openItemPicker('items')">+ <span data-t="choose_items">Выбрать предметы</span></button>
+<details class="chosen"><summary><span data-t="chosen">Выбрано</span> <b id="itemsChosenCount">0</b></summary><div id="itemsChosenList" class="chosen-list"></div></details>
+<details class="manual-ids"><summary data-t="paste_ids">Вставить ID вручную</summary><input type="text" id="itemIds" aria-label="Snipe items IDs" placeholder="123,456…" onchange="applyFilters();autoSavePreset()" oninput="applyFilters();autoSavePreset()"></details>
+</fieldset></section>
+<section class="filter-block boe-block" id="boeCard">
+<div id="boeHeading"><label class="filter-toggle"><input type="checkbox" id="boeSnipe" onchange="toggleBoeSnipe()"><span>BoE Snipe</span><small>02</small></label></div>
+<div id="boeSection"><div id="boeFilters"></div><button type="button" class="pick-button" onclick="addBoeFilter()">+ <span data-t="add_group">Добавить группу</span></button></div>
+</section>
+<section class="filter-block sale-block"><div class="field-label"><span data-t="sale_realms">Реалмы продажи</span><button type="button" class="help-btn" aria-expanded="false" data-help="sale_realms_help" onclick="showHelp(event,this)">?</button></div><button type="button" class="pick-button" onclick="switchTab('realms')" data-t="choose_realms">Выбрать реалмы →</button><details class="manual-ids"><summary data-t="paste_ids">Вставить ID вручную</summary><input type="text" id="saleRealms" aria-label="Sale realm IDs" placeholder="1615,1602…" onchange="syncSaleRealms()"></details></section>
+</aside>
+<div class="workspace-content" id="sniperContent"><div class="workspace-toolbar"><button type="button" id="filterToggle" class="icon-button" aria-expanded="true" aria-controls="sniperSidebar" onclick="toggleFilters()">☷ <span data-t="filters">Фильтры</span></button><span class="workspace-title" data-t="market_table">Рынок</span><span class="result-count"><b id="itemCount">—</b> <span data-t="offers">предложений</span></span><span class="toolbar-hint" data-t="click_item_hint">Нажмите на предмет или цену · аналитика по реалмам</span></div><div id="gridContainer" class="ag-theme-custom-dark"></div><div id="sniperDetailHost" class="detail-host" hidden></div><div class="workspace-footer" id="infoPanel"><span data-t="updated_label">Обновлено:</span> <b id="updateTime">—</b><span id="gridStatusMessage" role="status"></span><span class="footer-right" data-t="full_table_hint">Все столбцы · горизонтальная прокрутка</span></div></div>
+</div></div>
+
+<div id="tab-browser" class="tab-panel"><div class="workspace-main" id="browserMain"><aside class="workspace-sidebar browser-sidebar" id="browserSidebar"><div class="sidebar-title"><span data-t="filters">Фильтры</span><button type="button" class="icon-button" onclick="toggleBrowserFilters()" aria-label="Скрыть фильтры браузера">‹</button></div>
+<input id="catSearch" type="text" data-tph="cat_search_ph" placeholder="🔍 Категории..." oninput="filterCategories()" style="width:100%;margin-bottom:6px;padding:4px 8px">
+<label style="display:flex;align-items:center;gap:4px;margin-bottom:6px;font-size:11px;color:var(--text2);cursor:pointer;padding:5px 8px;background:var(--bg2);border-radius:4px;border:1px solid var(--border)"><input type="checkbox" id="browserSnipedOnly" onchange="loadBrowserItems()" style="width:auto;margin:0"> ⭐ Show sniping list</label>
+<label data-t="quality">Качество</label><select id="browserQuality" onchange="loadBrowserItems()"><option value="" data-t="all">Все</option><option value="EPIC">Epic</option><option value="RARE">Rare</option><option value="UNCOMMON">Uncommon</option><option value="COMMON">Common</option><option value="POOR">Poor</option></select>
+<label data-t="expansion">Эра</label><select id="browserExp" onchange="loadBrowserItems()"><option value="" data-t="all">Все</option><option value="0">Classic</option><option value="1">TBC</option><option value="2">WotLK</option><option value="3">Cataclysm</option><option value="4">MoP</option><option value="5">WoD</option><option value="6">Legion</option><option value="7">BfA</option><option value="8">Shadowlands</option><option value="9">Dragonflight</option><option value="10">TWW</option><option value="11">Midnight</option><option value="12">Midnight 12.1 ✨</option></select>
+<label style="display:flex;align-items:center;gap:4px;margin-bottom:6px;font-size:11px;color:var(--text2);cursor:pointer;padding:5px 8px;background:var(--bg2);border-radius:4px;border:1px solid var(--border)"><input type="checkbox" id="browserBoeOnly" onchange="loadBrowserItems()" style="width:auto;margin:0"> 🔰 BoE only</label><div id="browserBoeMetaFilters" style="display:none"><select id="browserBoeStats" onchange="loadBrowserItems()"><option value="">Все статы</option><option value="critical_strike+haste">Crit + Haste</option><option value="critical_strike+versatility">Crit + Versatility</option><option value="critical_strike+mastery">Crit + Mastery</option><option value="haste+versatility">Haste + Versatility</option><option value="haste+mastery">Haste + Mastery</option><option value="versatility+mastery">Versatility + Mastery</option></select><label style="display:block">Доп. стат<select id="browserBoeEffect" onchange="loadBrowserItems()"></select></label><select id="browserBoeSocket" onchange="loadBrowserItems()"><option value="">Сокет: любой</option><option value="yes">С сокетом</option><option value="no">Без сокета</option></select></div>
+<h3><span data-t="categories">Категории</span> <span style="font-size:9px;color:var(--text2);cursor:pointer;font-weight:400" data-t="all_bracket" onclick="resetBrowser()">[все]</span></h3><div id="catTree" class="cat-tree" data-t="loading">Загрузка...</div>
+<div class="muted" data-t="catalog_hint">Каталог независим от фильтров снайпера.</div>
+</aside><div class="workspace-content"><div class="workspace-toolbar"><button type="button" id="browserFilterToggle" class="icon-button" aria-expanded="true" aria-controls="browserSidebar" onclick="toggleBrowserFilters()">☷ <span data-t="filters">Фильтры</span></button><span class="workspace-title" data-t="tab_browser">Браузер</span><span id="browserStatus" class="result-count">—</span><span class="toolbar-hint" data-t="catalog_star_hint">☆ — в снайп-лист · нажмите предмет для аналитики</span></div><div id="browserGrid" class="ag-theme-custom-dark"></div><div id="browserDetailHost" class="detail-host" hidden></div></div></div></div>
+
+<div id="tab-realms" class="tab-panel"><div class="realms-shell">
+<div class="realms-hero"><div><div class="realms-kicker" data-t="realm_picker_kicker">ТОЧКИ ПРОДАЖИ</div><div class="realms-title" data-t="realm_picker_title">Где будем продавать?</div><div class="realms-subtitle" data-t="realm_picker_desc">Отметьте реалмы звездочкой — снайпер сразу пересчитает предложения и покажет самый выгодный рынок.</div></div><div class="realms-counter"><b id="realmSelectedCount">0</b><span data-t="realm_selected">выбрано</span></div></div>
+<div class="realms-tools"><input id="realmSearch" class="realms-search" data-tph="realm_search_ph" placeholder="🔍 Найти реалм или ID..." oninput="renderRealmPicker()"><button type="button" class="realm-clear" data-t="realm_clear" onclick="clearSaleRealms()">Очистить выбор</button></div>
+<div id="realmChips" class="realm-chips"></div><div id="realmGrid" class="realm-grid"><div class="realm-empty" data-t="loading">Загрузка...</div></div>
+</div></div>
+
+<div id="tab-logs" class="tab-panel"><div id="logContainer">—</div></div>
+
+<div id="tab-settings" class="tab-panel"><div id="settingsPanel"><div class="settings-heading"><span class="eyebrow">AH SNIPER</span><h2 data-t="tab_settings">Настройки</h2></div><div id="webUserSection" style="display:none;padding:12px 16px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);margin-bottom:16px;align-items:center;gap:12px">
+<span style="font-size:20px">👤</span>
+<div style="flex:1"><div id="webUserEmail" style="font-size:13px;font-weight:600"></div><div id="webUserTier" style="font-size:11px;color:var(--text2)"></div></div>
+<a href="/" target="_blank" style="font-size:11px;color:var(--gold);text-decoration:none;padding:4px 10px;border:1px solid rgba(245,200,66,.3);border-radius:6px">🏠 AH Sniper</a>
+<a href="__AH_SUPPORT_URL__" target="_blank" style="font-size:11px;color:var(--text2);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px">🐛 Bug</a>
+<button onclick="window.location.href='/logout'" data-t="logout" style="font-size:11px;padding:4px 12px;border:1px solid var(--red);background:none;color:var(--red);border-radius:6px;cursor:pointer">Выйти</button>
+</div>
+<div class="settings-grid"><section class="settings-card"><h3 data-t="appearance">Рабочее пространство</h3><p class="muted" data-t="appearance_hint">Настройте таблицу под себя. Полный набор аналитики остаётся доступен.</p><div class="field-pair"><label><span data-t="theme">Тема</span><select id="appearanceTheme" onchange="updateAppearance()"><option value="dark" data-t="theme_dark">Графит</option><option value="light" data-t="theme_light">Светлая</option><option value="system" data-t="theme_system">Системная</option></select></label><label><span data-t="density">Плотность таблицы</span><select id="appearanceDensity" onchange="updateAppearance()"><option value="compact" data-t="density_compact">Компактная</option><option value="comfortable" data-t="density_comfortable">Свободнее</option></select></label></div><label class="check-label"><input type="checkbox" id="appearancePinItem" checked onchange="updateAppearance()"><span data-t="pin_item">Закрепить название предмета</span></label><label class="check-label"><input type="checkbox" id="appearancePinSale" onchange="updateAppearance()"><span data-t="pin_sale">Закрепить цену продажи</span></label><h4 data-t="pin_above">Приоритетные предложения</h4><div class="field-pair"><label><span data-t="min_avg">Средняя от, g</span><input type="number" id="setPinAvg" min="0" value="0" onchange="updateAppearance()"></label><label><span data-t="min_discount">Скидка от, %</span><input type="number" id="setPinDisc" min="0" max="100" value="0" onchange="updateAppearance()"></label></div><p class="muted" data-t="pin_desc">Предметы с Avg > X и Discount > Y% закрепляются сверху</p></section><section class="settings-card presets-card"><h3 data-t="presets">Пресеты</h3><p class="muted" data-t="presets_hint">Фильтры сохраняются автоматически. При сбое облака черновик остаётся на этом устройстве.</p><p id="presetSyncDetails" class="sync-details" role="status"></p><div id="presetList"></div><div class="settings-actions"><button type="button" onclick="newPreset()" data-t="new_preset">+ Из текущих фильтров</button><button type="button" class="secondary" onclick="exportLocalPresets()" data-t="export_local">Скачать копию</button><button type="button" class="secondary" onclick="quickSavePreset()" data-t="sync_now">Синхронизировать</button></div><div id="presetIOSettings" style="display:none"><label class="import-presets"><span data-t="import_presets">Импортировать presets.json</span><input type="file" accept=".json" onchange="importPresetsFile(this)"></label></div><div id="presetForm" style="display:none;margin-top:12px;padding:10px;background:var(--bg2);border-radius:6px;border:1px solid var(--border)">
+<input type="hidden" id="pfId">
+<label data-t="name_label">Название</label><input type="text" id="pfName">
+<label data-t="item_ids">ID предметов</label><textarea id="pfItems" rows="2" style="resize:vertical"></textarea>
+<label data-t="sale_realms">Realm'ы продажи</label><input type="text" id="pfRealms">
+<label data-t="min_discount">Мин. скидка %</label><input type="number" id="pfDiscount" min="0" max="100">
+<label data-t="min_avg">Мин. средняя (g)</label><input type="number" id="pfAvg" min="0">
+<label style="font-size:11px"><input type="checkbox" id="pfItemsEnabled" checked style="width:auto;margin-right:4px"> Snipe items</label>
+<label style="font-size:11px"><input type="checkbox" id="pfDefault" style="width:auto;margin-right:4px"> <span data-t="default_preset">По умолчанию (авто-загрузка)</span></label>
+<div style="margin-top:8px;display:flex;gap:8px">
+<button onclick="savePreset()" data-t="save" style="background:var(--gold);color:#0d0d0d;font-weight:700">Сохранить</button>
+<button onclick="cancelPreset()" data-t="cancel" style="background:var(--bg3);color:var(--text);border:1px solid var(--border)">Отмена</button>
+</div></div>
+</section><section class="settings-card" id="adminSettingsSection"><h3 data-t="api_settings">Подключение</h3>
+<label data-t="region">Регион</label><select id="setRegion"><option value="eu">🇪🇺 EU</option><option value="us">🇺🇸 US</option></select>
+<div id="apiKeysSection"><label>Client ID</label><input type="text" id="setCid" placeholder="Blizzard Client ID">
+<label>Client Secret</label><input type="password" id="setCsecret" placeholder="Blizzard Client Secret"></div>
+<button onclick="saveSettings()" data-t="save_settings">💾 Сохранить</button><span id="setMsg" style="margin-left:10px;font-size:11px;color:var(--green)"></span>
+</section><section class="settings-card" id="soundSection">
+<h3 data-t="sound">🔔 Звук</h3>
+<label style="font-size:11px"><input type="checkbox" id="setSoundOn" style="width:auto;margin-right:4px"> <span data-t="sound_on_new">Звук при новом предмете</span></label>
+<div style="display:flex;gap:6px;margin-top:4px"><input type="text" id="setSoundFile" data-tph="sound_path" placeholder="Путь к .mp3..." style="flex:1;font-size:11px"><button onclick="browseSound()" style="font-size:11px;white-space:nowrap;padding:5px 10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer">📁 Browse</button></div>
+<button type="button" onclick="saveSettings()" data-t="save_settings">Сохранить настройки</button></section><section class="settings-card" id="licenseSection">
+<h3 data-t="license">🔑 Лицензия</h3>
+<div id="licenseStatus" style="font-size:12px;padding:8px 12px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);margin-bottom:8px" data-t="loading">Загрузка...</div>
+<div style="display:flex;gap:6px"><input type="text" id="licenseKey" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" style="flex:1;font-size:13px;letter-spacing:1px"><button onclick="activateLicense()" data-t="activate" style="padding:6px 16px;border:none;background:var(--green);color:#0d0d0d;font-weight:700;cursor:pointer;border-radius:4px;font-size:12px">Активировать</button></div>
+</section></div></div></div>
+<dialog id="itemPicker" aria-labelledby="pickerTitle"><div class="picker-head"><div><span class="eyebrow" data-t="item_catalog">КАТАЛОГ ПРЕДМЕТОВ</span><h2 id="pickerTitle">Snipe items</h2></div><button type="button" class="icon-button" onclick="closeItemPicker()" aria-label="Закрыть">×</button></div><input id="pickerSearch" class="picker-search" type="search" data-tph="picker_search" placeholder="Название или ID предмета…" oninput="searchPicker()"><div class="picker-tools"><div class="segmented"><button id="pickerAll" onclick="pickerMode(false)" data-t="all">Все</button><button id="pickerSelected" onclick="pickerMode(true)"><span data-t="chosen">Выбрано</span> <b id="pickerSelectedCount">0</b></button></div><span class="muted" data-t="picker_hint">Выбор сразу в фильтре</span></div><div id="pickerResults" role="group" aria-label="Предметы"></div><div class="picker-footer"><button id="pickerPrev" class="icon-button" onclick="pickerPage(-1)" aria-label="Предыдущая страница">←</button><span id="pickerPageInfo">—</span><button id="pickerNext" class="icon-button" onclick="pickerPage(1)" aria-label="Следующая страница">→</button><button class="primary" onclick="closeItemPicker()" data-t="done">Готово</button></div></dialog>
+<script>
+// ═══ i18n ═══
+var _lang=localStorage.getItem('ah_lang')||'ru';
+var T={
+ru:{
+tab_sniping:'📊 Снайпинг',tab_browser:'🌐 Браузер',tab_realms:'⭐ Реалмы',tab_logs:'📋 Логи',tab_settings:'⚙ Настройки',
+filters:'Фильтры',min_discount:'Мин. скидка %',min_avg:'Мин. средняя (g)',item_ids:'ID предметов',sale_realms:"Realm'ы продажи",
+item_ids_help:'ID предметов можете вставить самостоятельно, выгрузив список ID из предметов из wowhead. Как дополнительная опция, можно воспользоваться вкладкой "Браузер", на которой можно сконфигурировать свой снайп-лист путем нажатия на звездочку.',
+sale_realms_help:'Здесь указываются ID реалмов через запятую. Снайпер автоматически исходя из выбранных реалмов предложит, где продать выгоднее всего. Настроить перечень реалмов можно на вкладке "Реалмы".',
+realm_picker_kicker:'ТОЧКИ ПРОДАЖИ',realm_picker_title:'Где будем продавать?',realm_picker_desc:'Отметьте реалмы звездочкой — снайпер сразу пересчитает предложения и покажет самый выгодный рынок.',realm_selected:'выбрано',realm_search_ph:'🔍 Найти реалм или ID...',realm_clear:'Очистить выбор',realm_empty:'Ничего не найдено',
+info:'Инфо',items_label:'Предметов:',updated_label:'Обновлено:',
+no_filters:'Нет фильтров',boe_discount:'Скидка',
+api_settings:'⚙ API Настройки',region:'Регион',save_settings:'💾 Сохранить',
+pin_desc:'Предметы с Avg > X и Discount > Y% закрепляются сверху',
+sound:'🔔 Звук',sound_on_new:'Звук при новом предмете',sound_path:'Путь к .mp3...',
+license:'🔑 Лицензия',loading:'Загрузка...',activate:'Активировать',
+presets:'📋 Пресеты',new_preset:'+ Новый пресет',
+preset_io_desc:'📦 Импорт / Экспорт пресетов (для переноса в EXE)',
+download_presets:'⬇ Скачать presets.json',upload_presets:'⬆ Загрузить presets.json',
+name_label:'Название',default_preset:'По умолчанию (авто-загрузка)',save:'Сохранить',cancel:'Отмена',
+categories:'Категории',quality:'Качество',expansion:'Эра',all:'Все',all_bracket:'[все]',
+cat_search_ph:'🔍 Категории...',
+back:'← Назад',min_price:'💰 Мин. цена',average:'📊 Средняя',discount_label:'🏷️ Скидка',
+realm_prices:'📋 Цены по реалмам',add_snipe:'☆ В снайп-лист',in_snipe:'★ В снайп-листе',no_data:'Нет данных',
+collect_done:'✅ Сбор завершён! Данные обновлены.',collect_start:'📡 Начат сбор данных...',collect_error:'⚠️ Ошибка коллектора: ',
+preset_saved:'💾 Пресет сохранён',preset_updated:'💾 Пресет обновлён',
+error_save_preset:'Ошибка сохранения пресета',error_save:'Ошибка сохранения',
+select_preset:'⚠️ Выберите пресет для сохранения',
+license_activated:'🔑 Лицензия активирована!',enter_key:'⚠️ Введите ключ',error_activation:'Ошибка активации',
+settings_saved:'⚙ Настройки сохранены',settings_saved_short:'✅ Сохранено!',error_settings:'❌ Ошибка сохранения настроек',
+presets_loaded:'✅ Пресеты загружены: ',
+free_max_items:'🎁 Free: максимум 5 предметов. Обновите тариф → поддержка',
+free_banner_text:'5 предметов · 1 пресет · без BoE',activate_key:'🔑 Активировать ключ',
+logout:'Выйти',delete_preset:'Удалить пресет?',presets_select:'Пресеты...',
+grid_item:'Предмет',grid_price:'Цена',grid_qty:'Кол-во',grid_top3:'Топ-3',grid_sale_price:'Sale Цена',
+loading_data:'Загрузка данных...',forever:'(бессрочно)',until:'(до ',error:'Ошибка',
+no_categories:'Нет категорий',run_enrich:'Категории временно недоступны',
+items_short:'предм.',cats_short:'кат.',
+save_filters_title:'Сохранить текущие фильтры в пресет',
+copy_ok:'📋 ID скопированы: ',copy_fail:'❌ Не удалось скопировать',secret_kept:'(сохранён — пусто = не менять)',
+search_ph:'🔍 Search...'
+},
+en:{
+tab_sniping:'📊 Sniping',tab_browser:'🌐 Browser',tab_realms:'⭐ Realms',tab_logs:'📋 Logs',tab_settings:'⚙ Settings',
+filters:'Filters',min_discount:'Min. discount %',min_avg:'Min. average (g)',item_ids:'Item IDs',sale_realms:'Sale Realms',
+item_ids_help:'Paste item IDs here after exporting a list of item IDs from Wowhead. You can also build a snipe list on the Browser tab by clicking the star.',
+sale_realms_help:'Enter realm IDs separated by commas. Based on the selected realms, Sniper automatically suggests the most profitable place to sell. Configure the realm list on the Realms tab.',
+realm_picker_kicker:'SALE MARKETS',realm_picker_title:'Where do we sell?',realm_picker_desc:'Star the realms you use — Sniper instantly recalculates the offers and highlights the most profitable market.',realm_selected:'selected',realm_search_ph:'🔍 Find a realm or ID...',realm_clear:'Clear selection',realm_empty:'No realms found',
+info:'Info',items_label:'Items:',updated_label:'Updated:',
+no_filters:'No filters',boe_discount:'Discount',
+api_settings:'⚙ API Settings',region:'Region',save_settings:'💾 Save',
+pin_desc:'Items with Avg > X and Discount > Y% are pinned above',
+sound:'🔔 Sound',sound_on_new:'Sound on new item',sound_path:'Path to .mp3...',
+license:'🔑 License',loading:'Loading...',activate:'Activate',
+presets:'📋 Presets',new_preset:'+ New Preset',
+preset_io_desc:'📦 Import / Export presets (for EXE transfer)',
+download_presets:'⬇ Download presets.json',upload_presets:'⬆ Upload presets.json',
+name_label:'Name',default_preset:'Default (auto-load)',save:'Save',cancel:'Cancel',
+categories:'Categories',quality:'Quality',expansion:'Expansion',all:'All',all_bracket:'[all]',
+cat_search_ph:'🔍 Categories...',
+back:'← Back',min_price:'💰 Min. price',average:'📊 Average',discount_label:'🏷️ Discount',
+realm_prices:'📋 Realm prices',add_snipe:'☆ Add to snipe list',in_snipe:'★ In snipe list',no_data:'No data',
+collect_done:'✅ Collection complete! Data updated.',collect_start:'📡 Starting collection...',collect_error:'⚠️ Collector error: ',
+preset_saved:'💾 Preset saved',preset_updated:'💾 Preset updated',
+error_save_preset:'Preset save error',error_save:'Save error',
+select_preset:'⚠️ Select a preset',
+license_activated:'🔑 License activated!',enter_key:'⚠️ Enter key',error_activation:'Activation error',
+settings_saved:'⚙ Settings saved',settings_saved_short:'✅ Saved!',error_settings:'❌ Settings save error',
+presets_loaded:'✅ Presets loaded: ',
+free_max_items:'🎁 Free: max 5 items. Upgrade → поддержка',
+free_banner_text:'5 items · 1 preset · no BoE',activate_key:'🔑 Activate key',
+logout:'Log out',delete_preset:'Delete preset?',presets_select:'Presets...',
+grid_item:'Item',grid_price:'Price',grid_qty:'Qty',grid_top3:'Top-3',grid_sale_price:'Sale Price',
+loading_data:'Loading data...',forever:'(permanent)',until:'(until ',error:'Error',
+no_categories:'No categories',run_enrich:'Categories temporarily unavailable',
+items_short:'items',cats_short:'cats',
+save_filters_title:'Save current filters to preset',
+copy_ok:'📋 IDs copied: ',copy_fail:'❌ Copy failed',secret_kept:'(saved — leave empty to keep)',
+search_ph:'🔍 Search...'
+}
+};
+function t(k){var d=T[_lang]||T.ru;return d[k]!==undefined?d[k]:(T.ru[k]!==undefined?T.ru[k]:k);}
+function toggleLang(){_lang=_lang==='ru'?'en':'ru';localStorage.setItem('ah_lang',_lang);location.reload();}
+function applyLang(){
+document.getElementById('langBtn').textContent=_lang.toUpperCase();
+document.querySelectorAll('[data-t]').forEach(function(el){el.textContent=t(el.getAttribute('data-t'));});
+document.querySelectorAll('[data-tph]').forEach(function(el){el.placeholder=t(el.getAttribute('data-tph'));});
+document.querySelectorAll('[data-ttitle]').forEach(function(el){el.title=t(el.getAttribute('data-ttitle'));});
+}
+
+// ═══ State ═══
+var _grid,_data=[],_sel=[],_running=false,_st,_prevState='',_lastDataMarker='';
+var _bGrid,_bs={categories:[],activeClass:null,activeSubclass:null,openClasses:{}},_bLoaded=false;
+var _boeSnipe=false,_boeFilters=[],_itemsSnipe=true;
+var _realms=[],_realmsLoaded=false;
+
+// ═══ Tabs ═══
+function switchTab(tab){
+document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+var p=document.getElementById('tab-'+tab);if(p)p.classList.add('active');
+var b=document.querySelector('.tab-btn[data-tab="'+tab+'"]');if(b)b.classList.add('active');
+// Поиск больше не стирается при переключении вкладок (результаты уже отфильтрованы)
+if(tab==='browser'){if(!_bLoaded){loadBrowser();_bLoaded=true;}else loadBrowserItems();}
+if(tab==='browser'&&_bGrid)_bGrid.setGridOption('quickFilterText','');
+if(tab==='realms')loadRealmPicker();
+if(tab==='items'&&_grid)applyAppearance();
+if(tab==='settings'){loadSettings();loadPresets();loadLicenseStatus();}
+}
+
+// ═══ Context help ═══
+function closeHelp(){var p=document.getElementById('helpPopover');if(!p)return;p.classList.remove('open');document.querySelectorAll('.help-btn[aria-expanded="true"]').forEach(function(b){b.setAttribute('aria-expanded','false');});}
+function showHelp(ev,btn){ev.stopPropagation();var p=document.getElementById('helpPopover');var wasOpen=btn.getAttribute('aria-expanded')==='true';closeHelp();if(wasOpen)return;p.textContent=t(btn.getAttribute('data-help'));p.classList.add('open');btn.setAttribute('aria-expanded','true');var r=btn.getBoundingClientRect();var left=Math.min(window.innerWidth-p.offsetWidth-12,Math.max(12,r.left));var top=r.bottom+8;if(top+p.offsetHeight>window.innerHeight-12)top=Math.max(12,r.top-p.offsetHeight-8);p.style.left=left+'px';p.style.top=top+'px';}
+document.addEventListener('click',function(e){if(!e.target.closest('#helpPopover')&&!e.target.closest('.help-btn'))closeHelp();});document.addEventListener('keydown',function(e){if(e.key==='Escape')closeHelp();});
+
+// ═══ Sale realm picker ═══
+function selectedRealmIds(){var raw=(document.getElementById('saleRealms').value||'').split(',');var out=[];raw.forEach(function(x){var id=parseInt(x.trim());if(id&&!out.includes(id))out.push(id);});return out;}
+async function loadRealmPicker(){if(!_realmsLoaded){var d=await api('/browser/api/realms');_realms=d&&Array.isArray(d.realms)?d.realms:[];_realmsLoaded=true;}renderRealmPicker();}
+function realmLabel(r){return r.name||r.name_en||('Realm '+r.id);}
+function renderRealmPicker(){if(!_realmsLoaded)return;var selected=selectedRealmIds();var picked=new Set(selected);var q=(document.getElementById('realmSearch').value||'').trim().toLowerCase();var filtered=_realms.filter(function(r){return !q||realmLabel(r).toLowerCase().indexOf(q)>=0||String(r.id).indexOf(q)>=0||(r.name_en||'').toLowerCase().indexOf(q)>=0;});document.getElementById('realmSelectedCount').textContent=selected.length;var byId={};_realms.forEach(function(r){byId[r.id]=r;});document.getElementById('realmChips').innerHTML=selected.map(function(id){var r=byId[id];return'<span class="realm-chip">★ '+escapeHtml(r?realmLabel(r):('Realm '+id))+' <small>#'+id+'</small><button type="button" aria-label="Remove" onclick="event.stopPropagation();toggleSaleRealm('+id+')">×</button></span>';}).join('');document.getElementById('realmGrid').innerHTML=filtered.length?filtered.map(function(r){var on=picked.has(parseInt(r.id));return'<button type="button" class="realm-card'+(on?' selected':'')+'" aria-pressed="'+on+'" onclick="toggleSaleRealm('+parseInt(r.id)+')"><span class="realm-star">'+(on?'★':'☆')+'</span><span style="min-width:0;text-align:left"><span class="realm-name">'+escapeHtml(realmLabel(r))+'</span><span class="realm-meta">ID '+parseInt(r.id)+(r.name_en&&r.name_en!==r.name?' · '+escapeHtml(r.name_en):'')+'</span></span></button>';}).join(''):'<div class="realm-empty">'+t('realm_empty')+'</div>';}
+function toggleSaleRealm(id){var ids=selectedRealmIds();var pos=ids.indexOf(id);if(pos>=0)ids.splice(pos,1);else ids.push(id);document.getElementById('saleRealms').value=ids.join(',');renderRealmPicker();applyFilters();autoSavePreset();}
+function clearSaleRealms(){document.getElementById('saleRealms').value='';renderRealmPicker();applyFilters();autoSavePreset();}
+function syncSaleRealms(){var el=document.getElementById('saleRealms');el.value=selectedRealmIds().join(',');renderRealmPicker();applyFilters();autoSavePreset();}
+function escapeHtml(v){return String(v==null?'':v).replace(/[&<>'"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});}
+
+// ═══ API ═══
+async function api(url,opts){try{var r=await fetch(url,opts);var d=await r.json();if(!r.ok&&url==='/api/presets'&&(!opts||!opts.method||opts.method==='GET'))return null;return d;}catch(e){return null;}}
+async function apiPost(url,body){return await api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
+
+// ═══ Collector ═══
+async function toggleCollector(){_running=!_running;var b=document.getElementById('btnStart');if(_running){b.textContent='⏹ Stop';b.className='btn-stop';if(_grid){_data=[];_grid.setGridOption('rowData',[]);await api('/api/start');}else{await api('/api/start');}}else{b.textContent='▶ Start';b.className='btn-gold';await api('/api/stop');}}
+async function pollStatus(){var s=await api('/api/status');if(s){var h=s.state!=='idle'?'🟢 ':'⚪ ';h+=s.state;if(s.realms_done)h+=' ('+s.realms_done+'/'+s.realms_total+')';document.getElementById('status').innerHTML=h;
+// Progress bar
+if(s.state==='collecting'&&s.realms_total>0){setProgress(s.realms_done/s.realms_total*100);}else if(s.state==='monitoring'){setProgress(100);}else{setProgress(0);}
+// State change notifications
+if(s.state!==_prevState){
+if(s.state==='monitoring'&&_prevState==='collecting'){toast(t('collect_done'),'ok');playNotifySound();}
+if(s.state==='collecting'&&_prevState!=='collecting'){toast(t('collect_start'),'info');}
+if(s.state.indexOf('error')>=0){toast(t('collect_error')+s.state,'err');}
+}
+// Рефреш грида: каждые 2с только пока идёт сбор (прогрессивное заполнение);
+// в monitoring — только когда данные реально изменились (−95% запросов к /api/items)
+var _marker=(s.collected_at||'')+'|'+(s.gen||0);
+if(_grid&&!_isWeb&&(s.state==='collecting'||(s.state==='monitoring'&&_prevState==='collecting')||_marker!==_lastDataMarker)){_lastDataMarker=_marker;applyFilters();}
+_prevState=s.state;}if(!_isWeb){var l=await api('/api/logs');if(l&&l.logs)document.getElementById('logContainer').textContent=l.logs.join('\n');}}
+setInterval(pollStatus,2000);
+
+// ═══ Search ═══
+function debounceSearch(){clearTimeout(_st);_st=setTimeout(function(){var v=document.getElementById('searchInput').value.trim();var browserTab=document.querySelector('.tab-btn[data-tab=\"browser\"]');if(browserTab&&browserTab.classList.contains('active')){loadBrowserItems();}else{applyFilters();}},300);}
+
+// ═══ Format ═══
+function fmtGold(v){if(!v)return'—';return formattedGold(Math.floor(v/100)/100);}
+function discHtml(v){var cls=v>=30?'disc-high':v>=15?'disc-mid':'disc-low';return'<span class="discount-badge '+cls+'">'+(v>0?'-':'')+v+'%</span>';}
+
+// ═══ Settings ═══
+async function loadSettings(){var s=await api('/api/settings');if(!s)return;document.getElementById('setRegion').value=s.region||'eu';document.getElementById('setCid').value=s.client_id||'';var cs=document.getElementById('setCsecret');cs.value=s.client_secret||'';cs.placeholder=(s.has_client_secret)?t('secret_kept'):'';if(!_isWeb){document.getElementById('setPinAvg').value=_appearance.pinAvg==null?(s.pin_avg_gold||0):_appearance.pinAvg;document.getElementById('setPinDisc').value=_appearance.pinDisc==null?(s.pin_discount||0):_appearance.pinDisc;}document.getElementById('setSoundOn').checked=s.sound_enabled||false;document.getElementById('setSoundFile').value=s.sound_file||'';}
+async function saveSettings(){var d={region:document.getElementById('setRegion').value,client_id:document.getElementById('setCid').value,client_secret:document.getElementById('setCsecret').value,pin_avg_gold:parseInt(document.getElementById('setPinAvg').value)||0,pin_discount:parseInt(document.getElementById('setPinDisc').value)||0,sound_enabled:document.getElementById('setSoundOn').checked,sound_file:document.getElementById('setSoundFile').value,};var r=await apiPost('/api/settings',d);var m=document.getElementById('setMsg');m.textContent=r&&r.ok?t('settings_saved_short'):'❌ '+t('error');if(r&&r.ok){toast(t('settings_saved'),'ok');_sndCfg=null;_notifyAudio=null;}else toast(t('error_settings'),'err');setTimeout(function(){m.textContent='';},2000);}
+function browseSound(){var i=document.createElement('input');i.type='file';i.accept='.mp3,.wav';i.onchange=function(){if(i.files[0])document.getElementById('setSoundFile').value=i.files[0].name;};i.click();}
+
+// ═══ License ═══
+async function loadLicenseStatus(){var s=await api('/api/license/status');var el=document.getElementById('licenseStatus');if(!el)return;if(s&&s.valid){var exp=s.expires_at||'forever';el.innerHTML='<span style="color:var(--green)">🟢 Premium</span> <span style="color:var(--text2);font-size:11px">'+(exp==='forever'?t('forever'):t('until')+exp.substring(0,10)+')')+'</span>';}else{el.innerHTML='<span style="color:var(--red)">🔴 Free</span> <span style="color:var(--text2);font-size:11px">'+(s?s.reason||'':'')+'</span>';}}
+async function activateLicense(){var key=document.getElementById('licenseKey').value.trim();if(!key){toast(t('enter_key'),'err');return;}var url=_isWeb?'/profile/activate':'/api/license/activate';var r=await apiPost(url,{key:key});if(r&&(r.valid||r.ok)){toast(t('license_activated'),'ok');document.getElementById('licenseKey').value='';loadLicenseStatus();if(_isWeb){api('/profile/status').then(function(s){if(s)_tier=s.tier;});} }else{toast('❌ '+(r?r.reason||r.error:t('error_activation')),'err');}}
+
+// ═══ Sniper Grid ═══
+function applyFilters(){var q='?items_enabled='+(_itemsSnipe?'true':'false')+'&';var s=document.getElementById('searchInput').value.trim();if(s)q+='search='+encodeURIComponent(s)+'&';var d=parseInt(document.getElementById('minDiscount').value)||0;if(d)q+='min_discount='+d+'&';var a=parseInt(document.getElementById('minAvg').value)||0;if(a)q+='min_avg='+a+'&';var ids=(document.getElementById('itemIds').value||'').replace(/\s/g,'');if(ids)q+='item_ids='+ids+'&';var r=(document.getElementById('saleRealms').value||'').replace(/\s/g,'');if(r)q+='sale_realms='+r+'&';var bf=collectBoeFilters();if(bf.length)q+='boe_filters='+encodeURIComponent(JSON.stringify(bf))+'&';loadGrid(q);}
+function onSelChange(){var rows=_grid.getSelectedRows();_sel=rows.map(function(r){return r._id?String(r._id):'';}).filter(function(x){return x;});var bar=document.getElementById('selBar');if(_sel.length){bar.style.display='flex';document.getElementById('selIds').textContent=_sel.join(', ');}else{bar.style.display='none';}}
+function copySel(){
+var text=_sel.join(',')+',';
+function done(ok){toast(ok?t('copy_ok')+_sel.length:t('copy_fail'),ok?'ok':'err');}
+function fallback(){
+try{var ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');
+ta.style.cssText='position:fixed;left:-9999px;top:0';document.body.appendChild(ta);
+ta.select();ta.setSelectionRange(0,text.length);
+var ok=document.execCommand('copy');document.body.removeChild(ta);done(ok);}catch(e){done(false);}
+}
+try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){done(true);},function(){fallback();});return;}}catch(e){}
+fallback();
+}
+function clearSel(){_grid.deselectAll();}
+
+// ═══ Browser ═══
+async function loadBrowser(){loadCategories();loadBrowserItems();setTimeout(setupCatTree,100);}
+async function loadCategories(){var d=await api('/browser/api/categories');if(!d||!d.categories){document.getElementById('catTree').innerHTML='<div style="padding:10px;color:var(--text2)">'+t('no_categories')+'<br><small>'+t('run_enrich')+'</small></div>';return;}_bs.categories=d.categories||[];renderCategories();}
+function isActive(classIds,subclassIds){var ca=_bs.activeClass,sc=_bs.activeSubclass;if(!ca)return false;if(!classIds.includes(ca[0]))return false;if(!subclassIds&&!sc)return true;if(!subclassIds||!sc)return false;return subclassIds.some(function(s){return sc.includes(s);});}
+
+function renderCategories(){var tree=document.getElementById("catTree");if(!_bs.categories.length){tree.innerHTML="<div style=padding:10px;color:var(--text2)>No cats</div>";return;}var html="";_bs.categories.forEach(function(cat){var subHtml="";if(cat.subclasses)cat.subclasses.forEach(function(sc){if(sc.is_group){var chHtml="";(sc.subclasses||[]).forEach(function(ch){var a=isActive(cat.filter_class_ids,ch.filter_subclass_ids)?" sub-name active":"sub-name";chHtml+="<div class=\""+a+"\" data-cid=\""+cat.filter_class_ids.join(",")+"\" data-scid=\""+ch.filter_subclass_ids.join(",")+"\">"+ch.name+" <span>"+ch.count+"</span></div>";});var gk='o_'+cat.filter_class_ids.join('_')+'_s'+sc.filter_subclass_ids.join('_');var gslClass="sub-list"+( _bs.openClasses[gk]?" open":"");subHtml+="<div class=group-name data-cid=\""+cat.filter_class_ids.join(",")+"\" data-scid=\""+sc.filter_subclass_ids.join(",")+"\">"+sc.name+" <span>"+sc.count+"</span></div><div class=\""+gslClass+"\">"+chHtml+"</div>";}else{var a=isActive(cat.filter_class_ids,sc.filter_subclass_ids)?" sub-name active":"sub-name";subHtml+="<div class=\""+a+"\" data-cid=\""+cat.filter_class_ids.join(",")+"\" data-scid=\""+sc.filter_subclass_ids.join(",")+"\">"+sc.name+" <span>"+sc.count+"</span></div>";}});var a=isActive(cat.filter_class_ids,null)?" cat-name active":"cat-name";var ok='o_'+cat.filter_class_ids.join('_');var slClass="sub-list"+( _bs.openClasses[ok]?" open":"");html+="<div class=\""+a+"\" data-cid=\""+cat.filter_class_ids.join(",")+"\">"+cat.name+" <span>"+cat.count+"</span></div><div class=\""+slClass+"\">"+subHtml+"</div>";});tree.innerHTML=html;try{setupCatTree();}catch(e){}}
+function setupCatTree(){var ct=document.getElementById('catTree');if(!ct)return;ct.onclick=function(e){var el=e.target.closest('[data-cid]');if(el){var cids=el.getAttribute('data-cid').split(',').map(Number);var scids=el.getAttribute('data-scid');scids=scids?scids.split(',').map(Number):null;var sub=el.nextElementSibling;if(sub&&sub.classList.contains('sub-list')){var k='o_'+cids.join('_')+(scids?'_s'+scids.join('_'):'');if(_bs.openClasses[k])delete _bs.openClasses[k];else _bs.openClasses[k]=true;}bPick(cids,scids);return;}el=e.target.closest('[data-tog]');if(el){var sub=el.nextElementSibling;if(sub)sub.classList.toggle('open');}}}
+function bPick(c,s){if(_bs.activeClass&&_bs.activeClass[0]===c[0]&&(!_bs.activeSubclass&&!s||_bs.activeSubclass&&s&&_bs.activeSubclass[0]===s[0])){_bs.activeClass=null;_bs.activeSubclass=null;}else{_bs.activeClass=c;_bs.activeSubclass=s;}renderCategories();loadBrowserItems();}
+
+function resetBrowser(){_bs.activeClass=null;_bs.activeSubclass=null;renderCategories();loadBrowserItems();}
+
+var _browserRequest=0;
+async function loadBrowserItems(){var requestId=++_browserRequest;var snipedOnly=document.getElementById('browserSnipedOnly').checked;var boeOnly=document.getElementById('browserBoeOnly').checked;var bm=document.getElementById('browserBoeMetaFilters');if(bm){bm.style.display='block';bm.style.opacity=boeOnly?'1':'.45';bm.querySelectorAll('select').forEach(function(el){el.disabled=!boeOnly;});}var searchVal=document.getElementById('searchInput').value.trim();var localIds=selectedItemIds();if(snipedOnly){if(!localIds.length){_gridOrCreate([]);document.getElementById('browserStatus').textContent='0 '+t('items_short');return;}}var qs='?page=1&per_page=50000&sort=discount_desc';if(snipedOnly)qs+='&item_ids='+localIds.join(',');if(_bs.activeClass)qs+='&class_id='+_bs.activeClass[0];if(_bs.activeSubclass)qs+='&filter_subclass_ids='+_bs.activeSubclass.join(',');var q=document.getElementById('browserQuality').value;if(q)qs+='&quality='+q;var e=document.getElementById('browserExp').value;if(e)qs+='&expansion_id='+e;if(boeOnly){qs+='&boe=true';var bst=document.getElementById('browserBoeStats');var bso=document.getElementById('browserBoeSocket');if(bst&&bst.value)qs+='&boe_stats='+encodeURIComponent(bst.value);if(bso&&bso.value)qs+='&boe_socket='+bso.value;var bef=document.getElementById('browserBoeEffect');if(bef.value)qs+='&boe_effect='+encodeURIComponent(bef.value);}if(searchVal)qs+='&search='+encodeURIComponent(searchVal);var d=await api('/browser/api/items'+qs);if(requestId!==_browserRequest)return;var rows=[];var snipeSet={};localIds.forEach(function(id){snipeSet[id]=true;});if(requestId!==_browserRequest)return;if(d&&d.items)d.items.forEach(function(it){rows.push({discount:it.discount,icon:'',item:it.name,min:it.min_price,avg:it.avg_price,realms:it.realm_count,quality:it.quality||'',_id:it.item_id,_ilvl:it.ilvl||0,ilvl:it.ilvl||0,stats:it.stats_label||'',sockets:it.sockets,effects:it.effects,variants:it.variants||[],_snipe:!!snipeSet[it.item_id],_on:true});});document.getElementById('browserStatus').textContent=(d&&d.total?d.total:rows.length)+' '+t('items_short')+' | '+_bs.categories.length+' '+t('cats_short');_gridOrCreate(rows);}
+function filterCategories(){var q=(document.getElementById('catSearch').value||'').toLowerCase();document.querySelectorAll('#catTree .cat-name').forEach(function(el){el.style.display=q&&el.textContent.toLowerCase().indexOf(q)<0?'none':'';});}
+
+function selectedItemIds(){return parseItemIds(document.getElementById('itemIds').value);}
+function setItemSnipeLocal(itemId,added){var inp=document.getElementById('itemIds');var ids=selectedItemIds();if(added&&!ids.includes(itemId))ids.push(itemId);if(!added)ids=ids.filter(function(x){return x!==itemId;});inp.value=ids.join(',');applyFilters();autoSavePreset();return ids;}
+function refreshSnipeStars(itemId,added){
+if(_bGrid)_bGrid.forEachNode(function(node){if(node.data._id===itemId)node.updateData(Object.assign({},node.data,{_snipe:added}));});
+var button=document.getElementById('detailStarBtn');if(button&&_detailState&&_detailState.itemId===itemId)button.innerHTML=(added?'★':'☆')+'<span class="detail-action-text"> '+uiText(added?'В списке':'В снайп-лист',added?'In list':'Snipe list')+'</span>';
+}
+function detailToggleStar(itemId){
+var adding=!selectedItemIds().includes(itemId);if(adding&&_isWeb&&_tier==='none'&&selectedItemIds().length>=5){toast(t('free_max_items'),'err');return;}
+setItemSnipeLocal(itemId,adding);refreshSnipeStars(itemId,adding);
+}
+function browserToggleStar(itemId,el){
+var adding=!selectedItemIds().includes(itemId);if(adding&&_isWeb&&_tier==='none'&&selectedItemIds().length>=5){toast(t('free_max_items'),'err');return;}
+setItemSnipeLocal(itemId,adding);refreshSnipeStars(itemId,adding);
+if(document.getElementById('browserSnipedOnly').checked&&!adding)loadBrowserItems();
+}
+
+// ═══ BoE Filters ═══
+function toggleBoeSection(){var el=document.getElementById('boeSection');var tog=document.getElementById('boeToggle');if(el.style.display==='none'){el.style.display='block';tog.textContent='[-]';renderBoeFilters();}else{el.style.display='none';tog.textContent='[+]';}}
+function syncItemsSnipe(){document.getElementById('itemsSnipe').checked=_itemsSnipe;var fields=document.getElementById('itemsFilterFields');fields.disabled=!_itemsSnipe;fields.style.opacity=_itemsSnipe?'1':'.5';}
+function toggleItemsSnipe(){_itemsSnipe=document.getElementById('itemsSnipe').checked;syncItemsSnipe();applyFilters();autoSavePreset();}
+function toggleBoeSnipe(){_boeSnipe=document.getElementById('boeSnipe').checked;applyFilters();autoSavePreset();}
+function addBoeFilter(){_boeFilters.push({ids:'',ilvl_min:0,ilvl_max:999,discount:0,topx:4,stats:'',socket:'',effect:''});renderBoeFilters();autoSavePreset();}
+function removeBoeFilter(idx){closeItemPicker();_boeFilters.splice(idx,1);renderBoeFilters();applyFilters();autoSavePreset();}
+function updateBoeFilter(idx,field,val){_boeFilters[idx][field]=val;applyFilters();autoSavePreset();}
+function collectBoeFilters(){return _boeSnipe&&!(_isWeb&&_tier==='none')?_boeFilters.filter(function(f){return f.ids;}):[];}
+// ═══ Toast Notifications ═══
+function toast(msg,type){type=type||'info';var el=document.createElement('div');el.className='toast toast-'+type;el.textContent=msg;document.getElementById('toastContainer').appendChild(el);setTimeout(function(){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(function(){el.remove();},300);},3500);}
+
+// ═══ Loading Overlay ═══
+function showLoading(text){var o=document.getElementById('loadingOverlay');if(text)o.querySelector('.load-text').textContent=text;o.classList.add('active');}
+function hideLoading(){document.getElementById('loadingOverlay').classList.remove('active');}
+
+// ═══ Progress Bar ═══
+function setProgress(pct){document.getElementById('progressBar').style.width=Math.min(100,Math.max(0,pct))+'%';}
+
+// ═══ Sound Notification ═══
+var _audioCtx=null,_notifyAudio=null,_sndCfg=null;
+function playNotifySound(){
+if(_isWeb)return; // в web звук скрыт и не настраивается — тишина по дизайну
+try{
+if(!_sndCfg){_sndCfg={loaded:false};api('/api/settings').then(function(s){_sndCfg={loaded:true,enabled:!!(s&&s.sound_enabled),has_file:!!(s&&s.sound_file)};if(_sndCfg.enabled&&_sndCfg.has_file){try{_notifyAudio=new Audio('/api/sound?ts='+Date.now());}catch(e){}}});}
+// Настройки ещё не загружены (первые секунды) — дефолтный beep
+if(!_sndCfg.loaded){beep();return;}
+if(!_sndCfg.enabled)return; // звук выключен в настройках — молчим
+if(_notifyAudio){
+try{_notifyAudio.currentTime=0;var pr=_notifyAudio.play();if(pr&&pr.catch)pr.catch(function(){beep();});return;}catch(e){}
+}
+beep();
+}catch(e){}
+}
+function beep(){
+try{
+if(!_audioCtx)_audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+var osc=_audioCtx.createOscillator();var gain=_audioCtx.createGain();
+osc.connect(gain);gain.connect(_audioCtx.destination);
+osc.frequency.value=880;osc.type='sine';
+gain.gain.setValueAtTime(0.3,_audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.01,_audioCtx.currentTime+0.5);
+osc.start(_audioCtx.currentTime);osc.stop(_audioCtx.currentTime+0.5);
+}catch(e){}
+}
+
+// ═══ Web Mode + Supabase Data ═══
+var _isWeb=false,_sbUrl='',_sbAnon='',_sbRegion='eu',_webItems=null,_webUpdatedAt='',_tier='pro';
+async function detectEnv(){var e=await api('/api/env');if(!e||!e.preset_scope)throw Error('environment_unavailable');initPresetStore(e);if(e&&e.is_web){_isWeb=true;_tier=e.tier||'none';
+_sbUrl=e.supabase_url||'';_sbAnon=e.supabase_anon||'';_sbRegion=e.region||'eu';
+document.getElementById('btnStart').style.display='none';
+var aks=document.getElementById('adminSettingsSection');if(aks)aks.style.display='none'; /* регион/ключи/Save — только EXE */
+var pio=document.getElementById('presetIOSettings');if(pio)pio.style.display='block';
+var logTab=document.querySelector('[data-tab="logs"]');if(logTab)logTab.style.display='none';
+var snd=document.getElementById('soundSection');if(snd)snd.style.display='none';
+if(_tier==='none'){
+var boeH=document.getElementById('boeHeading');if(boeH)boeH.style.display='none';
+var boeS=document.getElementById('boeSection');if(boeS)boeS.style.display='none';
+var lic=document.getElementById('licenseSection');if(lic)lic.style.display='none';
+showFreeBanner();
+}
+var us=document.getElementById('webUserSection');if(us){us.style.display='flex';
+api('/profile/status').then(function(s){if(s){document.getElementById('webUserEmail').textContent=s.email||'';
+var tn={'none':'Free','lite':'Lite','pro':'Pro'};document.getElementById('webUserTier').textContent=(tn[s.tier]||s.tier||'Free')+' · AH Sniper';}});}
+startSupabasePoll();
+}}
+function showFreeBanner(){var b=document.createElement('div');b.id='freeBanner';b.style.cssText='background:linear-gradient(90deg,#1e3a5f,#1a1d25);border:1px solid #3b82f6;border-radius:8px;padding:10px 16px;margin:6px 14px;font-size:12px;color:#93c5fd;display:flex;align-items:center;gap:10px;flex-shrink:0';
+b.innerHTML='<span>🎁 <b>Free</b>: '+t('free_banner_text')+'</span><a href="/profile" target="_blank" style="color:var(--gold);font-weight:700;text-decoration:none;font-size:11px;padding:4px 12px;background:rgba(245,200,66,.1);border:1px solid var(--gold);border-radius:6px">'+t('activate_key')+'</a><span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:auto;color:var(--text2)">✕</span>';
+var tabs=document.querySelector('.tabs');tabs.parentElement.insertBefore(b,tabs.nextSibling);}
+function startSupabasePoll(){if(!_sbUrl)return;pollSupabase();setInterval(pollSupabase,15000);}
+var _sbBusy=false;
+async function pollSupabase(){if(_sbBusy)return;_sbBusy=true;try{
+var h={'apikey':_sbAnon,'Authorization':'Bearer '+_sbAnon};
+var r=await fetch(_sbUrl+'/rest/v1/auction_data?select=updated_at&region=eq.'+_sbRegion,{headers:h});
+if(!r.ok)return;var d=await r.json();
+if(!d||!d.length)return;
+var row=d[0];
+if(row.updated_at!==_webUpdatedAt){
+var payload=await fetch(_sbUrl+'/rest/v1/auction_data?select=items_json,updated_at&region=eq.'+_sbRegion,{headers:h});if(!payload.ok)return;var rows=await payload.json();if(!Array.isArray(rows)||!rows.length)return;
+var parsed=typeof rows[0].items_json==='string'?JSON.parse(rows[0].items_json):rows[0].items_json;if(!parsed||!Array.isArray(parsed.items))return;
+_webItems=parsed.items;
+_webUpdatedAt=rows[0].updated_at||row.updated_at;
+document.getElementById('updateTime').textContent=row.updated_at?row.updated_at.substring(0,19).replace('T',' '):'—';
+if(_grid)applyFilters();
+}
+}catch(e){}finally{_sbBusy=false;}}
+function webFilterItems(){
+return Boe.filterItems(_webItems||[],{
+    search:document.getElementById('searchInput').value.trim(),
+    discount:parseInt(document.getElementById('minDiscount').value)||0,
+    avg:parseInt(document.getElementById('minAvg').value)||0,
+    ids:selectedItemIds(),itemsEnabled:_itemsSnipe,boeFilters:collectBoeFilters()
+});
+}
+// ═══ Init ═══
+// ag-grid подключён с defer — инициализация только после DOMContentLoaded
+document.addEventListener('DOMContentLoaded',function(){
+document.getElementById('browserBoeEffect').innerHTML=detailOptions(Boe.effectOptions,'');
+applyLang();
+loadSettings();pollStatus();
+showLoading('…');
+detectEnv().then(function(){initWorkspace();return loadPresets();}).then(function(){if(_presetStore)_presetStore.flush();if(!_grid)applyFilters();setTimeout(hideLoading,400);},function(){hideLoading();showStartupError();});
+setTimeout(hideLoading,6000); /* страховка: оверлей не должен зависнуть */
+});
+</script></body></html>
