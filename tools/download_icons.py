@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """download_icons.py — скачивает все иконки предметов в локальную папку icons/
 Запуск: python download_icons.py
-После скачивания в item_browser.py будут браться локальные иконки из папки icons/
+После скачивания desktop/browser.py использует локальные иконки из папки icons/.
 """
 import os, sys, json, time, sqlite3, requests
 from concurrent.futures import ThreadPoolExecutor, as_completed

@@ -5,7 +5,7 @@ labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: "Спасибо, что помогаете сделать AH Sniper лучше! Заполните форму ниже."
+      value: "Issues видны всем. Перед отправкой уберите со скриншотов личные данные. Не прикладывайте ключи, токены, пароли, .env, рабочие конфиги или базы."
 
   - type: dropdown
     id: version
@@ -13,7 +13,7 @@ body:
       label: Версия
       description: Где вы столкнулись с багом?
       options:
-        - Веб-версия (example.invalid)
+        - Веб-версия
         - Десктоп (EXE)
         - Лендинг
     validations:
@@ -57,14 +57,5 @@ body:
       label: Скриншот
       description: Перетащите скриншот сюда (если есть)
       placeholder: "Перетащите изображение..."
-    validations:
-      required: false
-
-  - type: input
-    id: contact
-    attributes:
-      label: Контакт для связи
-      description: Telegram или email (необязательно)
-      placeholder: "@username"
     validations:
       required: false

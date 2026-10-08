@@ -6,6 +6,7 @@
 4. Сохраняет прогресс, чтобы можно было прервать и продолжить
 """
 import os, json, time, sqlite3, requests
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 import urllib3

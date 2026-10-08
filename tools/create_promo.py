@@ -7,6 +7,7 @@ import argparse
 from functools import lru_cache
 from pathlib import Path
 import math
+import os
 import subprocess
 import wave
 import numpy as np
